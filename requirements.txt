@@ -1,5 +1,7 @@
 streamlit
-opencv-python
-pillow
 easyocr
+opencv-python-headless
+pillow
 numpy
+speechrecognition
+pyaudio
