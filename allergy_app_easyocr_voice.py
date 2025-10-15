@@ -1,9 +1,9 @@
 """
-Allergy Detection Project — Duplicate with Voice Recognition
-============================================================
+Allergy Detection Project — Voice Recognition via Audio Upload
+===============================================================
 Features:
 1. Multiple user profiles stored in `user_profile.json`
-2. Voice recognition login (recognizes user by voice)
+2. Voice recognition login using uploaded audio files
 3. OCR-based ingredient detection using EasyOCR
 4. Allergy check for the recognized user
 """
@@ -17,7 +17,7 @@ from PIL import Image
 import numpy as np
 from pathlib import Path
 
-# For voice recognition
+# For voice recognition via uploaded audio
 import speech_recognition as sr
 
 # ---------- File paths ----------
@@ -97,12 +97,16 @@ def extract_text_from_image(image: Image.Image):
     results = reader.readtext(img, detail=0)
     return ', '.join(results)
 
-# ---------- Voice Recognition ----------
+# ---------- Voice Recognition via Uploaded Audio ----------
 def recognize_user():
+    uploaded_audio = st.file_uploader("Upload a short audio file saying your name", type=["wav", "mp3"])
+    if uploaded_audio is None:
+        return None
+    
     recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("🎤 Please speak your name clearly...")
-        audio = recognizer.listen(source, phrase_time_limit=3)
+    with sr.AudioFile(uploaded_audio) as source:
+        audio = recognizer.record(source)
+    
     try:
         text = recognizer.recognize_google(audio)
         return text.lower()
@@ -117,7 +121,7 @@ def find_user_by_name(name_text, users):
 
 # ---------- Streamlit UI ----------
 st.set_page_config(page_title="Allergy Detection App", page_icon="🥗", layout="centered")
-st.title("📸 Smart Allergy Detection with Voice Login")
+st.title("📸 Smart Allergy Detection with Voice Upload")
 
 users = load_users()
 db = load_db()
@@ -125,7 +129,7 @@ db = load_db()
 # Voice login
 st.sidebar.subheader("User Login")
 if 'profile' not in st.session_state:
-    if st.sidebar.button("Login via Voice"):
+    if st.sidebar.button("Login via Voice Upload"):
         name_detected = recognize_user()
         if name_detected:
             profile = find_user_by_name(name_detected, users)
@@ -135,7 +139,7 @@ if 'profile' not in st.session_state:
             else:
                 st.warning("User not recognized. Try again.")
         else:
-            st.error("Voice not detected. Try again.")
+            st.error("Voice not detected or audio invalid. Try again.")
 
 profile = st.session_state.get('profile', None)
 
@@ -148,8 +152,8 @@ if menu == "Home":
         st.write(f"Logged in as: **{profile['name']}**")
     st.write("Scan or upload a food label to detect allergens.")
     st.markdown("#### Quick Steps:")
-    st.write("1️⃣ Login using your voice in the sidebar.")
-    st.write("2️⃣ Go to **Scan Label** and use your camera.")
+    st.write("1️⃣ Login using your voice audio in the sidebar.")
+    st.write("2️⃣ Go to **Scan Label** and use your camera or upload an image.")
     st.write("3️⃣ Check allergens automatically for your profile.")
 
 elif menu == "Scan Label":
@@ -197,7 +201,6 @@ elif menu == "Manage Allergies":
             if new_allergy:
                 allergies.append(normalize(new_allergy))
                 profile['allergies'] = sorted(set(allergies))
-                # Update user_profile.json
                 all_users = load_users()
                 for u in all_users:
                     if u['name'] == profile['name']:
